@@ -40,6 +40,33 @@ The latest version of `cadence-web` is included in the `cadence` composed docker
 docker-compose -f docker/docker-compose.yml up
 ```
 
+### Using TLS with Docker
+
+You can run cadence-web in a Docker container with secure gRPC TLS communication by passing your CA certificate file to the container and configure the environment variable accordingly.
+
+#### Steps to Pass the Certificate File in Docker
+
+1. **Prepare your CA certificate file:**  
+   Ensure you have the root CA file (e.g., `ca.pem`) accessible on your host machine.
+
+2. **Mount the certificate file into the container:**  
+   Use Docker volume mounting (`-v` or `--volume`) to make the certificate file available inside the container at a known path.
+
+3. **Set the `CADENCE_GRPC_TLS_CA_FILE` environment variable to the mounted certificate path:**  
+
+Example command (for Linux):
+
+```bash
+docker run -it --rm \
+  --network=host \
+  -v /path/on/host/ca.pem:/etc/certs/ca.pem:ro \
+  -e CADENCE_GRPC_TLS_CA_FILE=/etc/certs/ca.pem \
+  ubercadence/server:master-auto-setup
+```
+
+- Replace `/path/on/host/ca.pem` with the actual location of your CA certificate on the host system.
+- `CADENCE_GRPC_TLS_CA_FILE` must point to the path inside the container where the certificate is mounted.
+
 ### Building & developing cadence-web 
 
 `cadence-web` requires node `v18` or greater to be able to run correctly.
@@ -97,6 +124,7 @@ docker-compose -f docker-compose-backend-services.yml up
 You can customize the YAML file or reuse configurations from the [cadence repository](https://github.com/cadence-workflow/cadence/tree/master/docker). (In case of reusing exsisting files: ensure that cadence-web is not included in the composed container services, or just remove it)
 
 After running `cadence`, start `cadence-web` for development using one of the previous methods ([Running development environment](#running-development-environment), [VSCode Dev Containers](#using-vscode-dev-containers))
+
 
 
 #### NPM scripts
