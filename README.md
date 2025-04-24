@@ -40,7 +40,7 @@ The latest version of `cadence-web` is included in the `cadence` composed docker
 docker-compose -f docker/docker-compose.yml up
 ```
 
-### Using TLS with Docker
+### Using TLS for gRPC
 
 You can run cadence-web with secure gRPC TLS communication by passing your CA certificate file to the container and configure the environment variable accordingly.
 
