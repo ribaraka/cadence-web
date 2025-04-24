@@ -42,7 +42,7 @@ docker-compose -f docker/docker-compose.yml up
 
 ### Using TLS with Docker
 
-You can run cadence-web in a Docker container with secure gRPC TLS communication by passing your CA certificate file to the container and configure the environment variable accordingly.
+You can run cadence-web with secure gRPC TLS communication by passing your CA certificate file to the container and configure the environment variable accordingly.
 
 #### Steps to Pass the Certificate File in Docker
 
