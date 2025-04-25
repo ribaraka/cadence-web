@@ -8,6 +8,7 @@ import * as fs from 'node:fs';
 import GRPC_PROTO_DIR_BASE_PATH from '@/config/grpc/grpc-proto-dir-base-path';
 
 import { GRPCError, type GRPCInputError } from './grpc-error';
+import logger from '@/utils/logger';
 
 const MAX_MESSAGE_SIZE = 64 * 1024 * 1024; //TODO: make this configurable for oss
 const GRPC_OPTIONS = {
@@ -141,7 +142,12 @@ export function getChannelCredentials() {
   let credentials;
   const caRootPath = process.env.CADENCE_GRPC_TLS_CA_FILE;
   if (caRootPath) {
-    credentials = grpc.credentials.createSsl(fs.readFileSync(caRootPath));
+    try {
+      const rootCert = fs.readFileSync(caRootPath);
+      credentials = grpc.credentials.createSsl(rootCert);
+    } catch {
+      logger.error(`Failed to read CA root file at ${caRootPath}`);
+    }
   } else {
     credentials = grpc.credentials.createInsecure();
   }
