@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { initializeTLS } from '@/utils/grpc/grpc-tls';
+
 import type {
   ConfigAsyncResolverDefinition,
   ConfigEnvDefinition,
@@ -21,6 +23,11 @@ import {
 const dynamicConfigs: {
   CADENCE_WEB_PORT: ConfigEnvDefinition;
   ADMIN_SECURITY_TOKEN: ConfigEnvDefinition;
+  INITIALIZE_TLS: ConfigSyncResolverDefinition<
+    undefined,
+    boolean,
+    'serverStart'
+  >;
   CLUSTERS: ConfigSyncResolverDefinition<
     undefined,
     ClustersConfigs,
@@ -54,6 +61,11 @@ const dynamicConfigs: {
     env: 'CADENCE_ADMIN_SECURITY_TOKEN',
     default: '',
   },
+  INITIALIZE_TLS: {
+    resolver: initializeTLS,
+    evaluateOn: 'serverStart',
+  },
+
   CLUSTERS: {
     resolver: clusters,
     evaluateOn: 'serverStart',

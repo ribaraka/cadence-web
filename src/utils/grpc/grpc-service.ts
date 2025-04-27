@@ -3,12 +3,11 @@ import type { ServiceClient } from '@grpc/grpc-js/build/src/make-client';
 import * as protoLoader from '@grpc/proto-loader';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
-import * as fs from 'node:fs';
 
 import GRPC_PROTO_DIR_BASE_PATH from '@/config/grpc/grpc-proto-dir-base-path';
+import { getChannelCredentials } from '@/utils/grpc/grpc-tls';
 
 import { GRPCError, type GRPCInputError } from './grpc-error';
-import logger from '@/utils/logger';
 
 const MAX_MESSAGE_SIZE = 64 * 1024 * 1024; //TODO: make this configurable for oss
 const GRPC_OPTIONS = {
@@ -136,22 +135,6 @@ class GRPCService {
 
     return meta;
   }
-}
-
-export function getChannelCredentials() {
-  let credentials;
-  const caRootPath = process.env.CADENCE_GRPC_TLS_CA_FILE;
-  if (caRootPath) {
-    try {
-      const rootCert = fs.readFileSync(caRootPath);
-      credentials = grpc.credentials.createSsl(rootCert);
-    } catch {
-      logger.error(`Failed to read CA root file at ${caRootPath}`);
-    }
-  } else {
-    credentials = grpc.credentials.createInsecure();
-  }
-  return credentials;
 }
 
 export default GRPCService;
