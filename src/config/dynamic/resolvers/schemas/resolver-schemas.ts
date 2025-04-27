@@ -49,6 +49,10 @@ const resolverSchemas: ResolverSchemas = {
       issues: z.boolean(),
     }),
   },
+  INITIALIZE_TLS: {
+    args: z.undefined(),
+    returnType: z.boolean(),
+  },
 };
 
 export default resolverSchemas;
