@@ -138,20 +138,27 @@ class GRPCService {
   }
 }
 
+let cachedCredentials: grpc.ChannelCredentials | null = null;
 export function getChannelCredentials() {
-  let credentials;
+  if (cachedCredentials) {
+    return cachedCredentials;
+  }
   const caRootPath = process.env.CADENCE_GRPC_TLS_CA_FILE;
   if (caRootPath) {
     try {
       const rootCert = fs.readFileSync(caRootPath);
-      credentials = grpc.credentials.createSsl(rootCert);
-    } catch {
-      logger.error(`Failed to read CA root file at ${caRootPath}`);
+      cachedCredentials = grpc.credentials.createSsl(rootCert);
+    } catch (e) {
+      logger.error({
+        message: `Failed to read CA root file`,
+        error: e,
+      });
+      process.exit(1);
     }
   } else {
-    credentials = grpc.credentials.createInsecure();
+    cachedCredentials = grpc.credentials.createInsecure();
   }
-  return credentials;
+  return cachedCredentials;
 }
 
 export default GRPCService;
