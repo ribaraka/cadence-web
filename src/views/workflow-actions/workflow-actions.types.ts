@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 
 import { type IconProps } from 'baseui/icon';
 import {
+  type UseFormClearErrors,
   type Control,
   type FieldErrors,
   type FieldValues,
@@ -31,6 +32,11 @@ export type WorkflowActionFormProps<FormData extends FieldValues> = {
   formData: FormData;
   fieldErrors: FieldErrors<FormData>;
   control: Control<FormData>;
+  clearErrors: UseFormClearErrors<FormData>;
+  cluster: string;
+  domain: string;
+  workflowId: string;
+  runId: string;
 };
 
 export type WorkflowActionSuccessMessageProps<SubmissionData, Result> = {
@@ -47,19 +53,28 @@ export type WorkflowActionRunnableStatus =
   | WorkflowActionNonRunnableStatus;
 
 export type WorkflowActionModalForm<FormData, SubmissionData> =
-  FormData extends FieldValues
-    ? {
-        form: (props: WorkflowActionFormProps<FormData>) => ReactNode;
-        formSchema: z.ZodSchema<FormData>;
-        transformFormDataToSubmission: (formData: FormData) => SubmissionData;
-      }
-    : {
-        form?: undefined;
-        formSchema?: undefined;
-        transformFormDataToSubmission?: undefined;
-      };
+  | {
+      withForm: true;
+      form: (
+        props: WorkflowActionFormProps<
+          FormData extends FieldValues ? FormData : any
+        >
+      ) => ReactNode;
+      formSchema: z.ZodSchema<FormData>;
+      transformFormDataToSubmission: (formData: FormData) => SubmissionData;
+    }
+  | {
+      withForm: false;
+      form?: undefined;
+      formSchema?: undefined;
+      transformFormDataToSubmission?: undefined;
+    };
 
-export type WorkflowAction<FormData, SubmissionData, Result> = {
+export type WorkflowAction<
+  Result,
+  FormData = undefined,
+  SubmissionData = undefined,
+> = {
   id: WorkflowActionID;
   label: string;
   subtitle: string;

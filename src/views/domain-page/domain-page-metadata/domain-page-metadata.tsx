@@ -1,54 +1,36 @@
 'use client';
 import React from 'react';
 
-import ListTable from '@/components/list-table/list-table';
-import ListTableNested from '@/components/list-table-nested/list-table-nested';
+import { useSuspenseQueries } from '@tanstack/react-query';
 
-import domainPageMetadataExtendedTableConfig from '../config/domain-page-metadata-extended-table.config';
-import domainPageMetadataTableConfig from '../config/domain-page-metadata-table.config';
+import getDomainDescriptionQueryOptions from '@/views/shared/hooks/use-domain-description/get-domain-description-query-options';
+
 import { type DomainPageTabContentProps } from '../domain-page-content/domain-page-content.types';
-import useSuspenseDomainPageMetadata from '../hooks/use-suspense-domain-page-metadata';
+import DomainPageMetadataTable from '../domain-page-metadata-table/domain-page-metadata-table';
+import getIsExtendedMetadataEnabledQueryOptions from '../hooks/use-is-extended-metadata-enabled/get-is-extended-metadata-enabled-query-options';
 
-import { styled } from './domain-page-metadata.styles';
-import { type MetadataItem } from './domain-page-metadata.types';
+import { type DomainMetadata } from './domain-page-metadata.types';
 
 export default function DomainPageMetadata(props: DomainPageTabContentProps) {
-  const domainMetadata = useSuspenseDomainPageMetadata({
-    domain: props.domain,
-    cluster: props.cluster,
+  const [
+    { data: domainDescription },
+    {
+      data: { metadata: isExtendedMetadataEnabled },
+    },
+  ] = useSuspenseQueries({
+    queries: [
+      getDomainDescriptionQueryOptions({
+        domain: props.domain,
+        cluster: props.cluster,
+      }),
+      getIsExtendedMetadataEnabledQueryOptions(),
+    ],
   });
 
-  return (
-    <styled.MetadataContainer>
-      {domainMetadata.isExtendedMetadataEnabled ? (
-        <ListTableNested
-          items={domainPageMetadataExtendedTableConfig.map(
-            (row: MetadataItem) => ({
-              key: row.key,
-              label: row.label,
-              description: row.description,
-              ...(row.kind === 'group'
-                ? {
-                    kind: 'group',
-                    items: row.items.map((item) => ({
-                      key: item.key,
-                      label: item.label,
-                      value: item.getValue(domainMetadata),
-                    })),
-                  }
-                : {
-                    kind: 'simple',
-                    value: row.getValue(domainMetadata),
-                  }),
-            })
-          )}
-        />
-      ) : (
-        <ListTable
-          data={domainMetadata.domainDescription}
-          listTableConfig={domainPageMetadataTableConfig}
-        />
-      )}
-    </styled.MetadataContainer>
-  );
+  const domainMetadata: DomainMetadata = {
+    domainDescription,
+    isExtendedMetadataEnabled,
+  };
+
+  return <DomainPageMetadataTable {...domainMetadata} />;
 }

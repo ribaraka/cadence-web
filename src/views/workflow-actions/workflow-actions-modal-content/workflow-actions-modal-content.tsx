@@ -4,12 +4,7 @@ import { Banner, HIERARCHY, KIND as BANNER_KIND } from 'baseui/banner';
 import { KIND as BUTTON_KIND, SIZE } from 'baseui/button';
 import { ModalButton } from 'baseui/modal';
 import { useSnackbar } from 'baseui/snackbar';
-import {
-  type FieldValues,
-  useForm,
-  type DefaultValues,
-  type Control,
-} from 'react-hook-form';
+import { type DefaultValues, type FieldValues, useForm } from 'react-hook-form';
 import { MdCheckCircle, MdErrorOutline, MdOpenInNew } from 'react-icons/md';
 
 import request from '@/utils/request';
@@ -21,23 +16,32 @@ import { overrides, styled } from './workflow-actions-modal-content.styles';
 import { type Props } from './workflow-actions-modal-content.types';
 
 export default function WorkflowActionsModalContent<
-  FormData extends FieldValues,
-  SubmissionData,
   Result,
->({ action, params, onCloseModal }: Props<FormData, SubmissionData, Result>) {
+  FormData,
+  SubmissionData,
+>({
+  action,
+  params,
+  onCloseModal,
+  initialFormValues,
+}: Props<Result, FormData, SubmissionData>) {
   const queryClient = useQueryClient();
   const { enqueue, dequeue } = useSnackbar();
+
+  // useForm doesn't accept form data that is not a FieldValues (e.g. undefined)
+  type OptionalFormData = FormData extends FieldValues ? FormData : any;
 
   const {
     handleSubmit,
     formState: { errors: validationErrors, isSubmitting },
     control,
     watch,
-  } = useForm<FormData>({
+    clearErrors,
+  } = useForm<OptionalFormData>({
     resolver: action.modal.formSchema
       ? zodResolver(action.modal.formSchema)
       : undefined,
-    defaultValues: {} as DefaultValues<FormData>,
+    defaultValues: initialFormValues as DefaultValues<OptionalFormData>,
   });
 
   const { mutate, isPending, error } = useMutation<
@@ -82,12 +86,11 @@ export default function WorkflowActionsModalContent<
   );
 
   const onSubmit = (data: FormData) => {
-    const { transformFormDataToSubmission } = action.modal;
-    const transform = transformFormDataToSubmission || (() => undefined);
-
     mutate({
       ...params,
-      submissionData: transform(data),
+      submissionData: action.modal.withForm
+        ? action.modal.transformFormDataToSubmission(data)
+        : (undefined as SubmissionData),
     });
   };
 
@@ -116,11 +119,16 @@ export default function WorkflowActionsModalContent<
               <MdOpenInNew />
             </styled.Link>
           )}
-          {Form && (
+          {action.modal.withForm && Form && (
             <Form
               formData={watch()}
               fieldErrors={validationErrors}
-              control={control as Control<FieldValues>}
+              clearErrors={clearErrors}
+              control={control}
+              cluster={params.cluster}
+              domain={params.domain}
+              workflowId={params.workflowId}
+              runId={params.runId}
             />
           )}
           {error && (
@@ -138,7 +146,7 @@ export default function WorkflowActionsModalContent<
         </styled.ModalBody>
         <styled.ModalFooter>
           <ModalButton
-            autoFocus={!action.modal.form}
+            autoFocus={!action.modal.withForm}
             size={SIZE.compact}
             type="button"
             kind={BUTTON_KIND.secondary}
