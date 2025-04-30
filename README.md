@@ -13,15 +13,15 @@ This web UI is used to view workflows from [Cadence][cadence], see what's runnin
 
 Set these environment variables if you need to change their defaults
 
-| Variable                     | Description                                   | Default          |
-|------------------------------| --------------------------------------------- | ---------------- |
-| CADENCE_GRPC_PEERS           | Comma-delimited list of gRPC peers            | 127.0.0.1:7833   |
-| CADENCE_GRPC_SERVICES_NAMES  | Comma-delimited list of gRPC services to call | cadence-frontend |
-| CADENCE_CLUSTERS_NAMES       | Comma-delimited list of cluster names         | cluster0         |
-| CADENCE_WEB_PORT             | HTTP port to serve on                         | 8088             |
-| CADENCE_WEB_HOSTNAME         | Host name to serve on                         | 0.0.0.0          |
-| CADENCE_ADMIN_SECURITY_TOKEN | Admin token for accessing admin methods       | ''               |
-| CADENCE_GRPC_TLS_CA_FILE     | Path to root CA certificate file for enabling one-way TLS on gRPC connections| ''               |
+| Variable                     | Description                                                                   | Default          |
+| ---------------------------- | ----------------------------------------------------------------------------- | ---------------- |
+| CADENCE_GRPC_PEERS           | Comma-delimited list of gRPC peers                                            | 127.0.0.1:7833   |
+| CADENCE_GRPC_SERVICES_NAMES  | Comma-delimited list of gRPC services to call                                 | cadence-frontend |
+| CADENCE_CLUSTERS_NAMES       | Comma-delimited list of cluster names                                         | cluster0         |
+| CADENCE_WEB_PORT             | HTTP port to serve on                                                         | 8088             |
+| CADENCE_WEB_HOSTNAME         | Host name to serve on                                                         | 0.0.0.0          |
+| CADENCE_ADMIN_SECURITY_TOKEN | Admin token for accessing admin methods                                       | ''               |
+| CADENCE_GRPC_TLS_CA_FILE     | Path to root CA certificate file for enabling one-way TLS on gRPC connections | ''               |
 
 Note: To connect `cadence-web` to multiple clusters, you will need to add comma-delimted entries for `CADENCE_GRPC_PEERS`, `CADENCE_GRPC_SERVICES_NAMES` & `CADENCE_CLUSTERS_NAMES` for each cluster (each cluster values are grouped by their index within the Comma-delimited lists).
 
@@ -58,7 +58,7 @@ Example command (for Linux):
 
 ```bash
 docker run -it --rm \
-  --network=host \
+  -p 8088:8088  \
   -v /path/on/host/ca.pem:/etc/certs/ca.pem:ro \
   -e CADENCE_GRPC_TLS_CA_FILE=/etc/certs/ca.pem \
   ubercadence/server:master-auto-setup
@@ -132,7 +132,7 @@ After running `cadence`, start `cadence-web` for development using one of the pr
 
 | script            | Description                                                                                     |
 | ----------------- | ----------------------------------------------------------------------------------------------- |
-| build             | Generate a production build                                                                       |
+| build             | Generate a production build                                                                     |
 | start             | Start server for existing production build                                                      |
 | dev               | Run a development server                                                                        |
 | install-idl       | Download idl files required for building/running the project                                    |

@@ -6,9 +6,9 @@ import merge from 'lodash/merge';
 import * as fs from 'node:fs';
 
 import GRPC_PROTO_DIR_BASE_PATH from '@/config/grpc/grpc-proto-dir-base-path';
+import logger from '@/utils/logger';
 
 import { GRPCError, type GRPCInputError } from './grpc-error';
-import logger from '@/utils/logger';
 
 const MAX_MESSAGE_SIZE = 64 * 1024 * 1024; //TODO: make this configurable for oss
 const GRPC_OPTIONS = {
@@ -143,17 +143,16 @@ export function getChannelCredentials() {
   if (cachedCredentials) {
     return cachedCredentials;
   }
-  const caRootPath = process.env.CADENCE_GRPC_TLS_CA_FILE;
+  const caRootPath = process.env.CADENCE_GRPC_TLS_CA_FILE?.trim();
   if (caRootPath) {
     try {
       const rootCert = fs.readFileSync(caRootPath);
       cachedCredentials = grpc.credentials.createSsl(rootCert);
     } catch (e) {
       logger.error({
-        message: `Failed to read CA root file`,
+        message: `Failed to read GRPC TLS CA file`,
         error: e,
       });
-      process.exit(1);
     }
   } else {
     cachedCredentials = grpc.credentials.createInsecure();
