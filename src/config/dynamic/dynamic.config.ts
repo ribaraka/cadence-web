@@ -30,7 +30,7 @@ import workflowsListEnabled from './resolvers/workflows-list-enabled';
 const dynamicConfigs: {
   CADENCE_WEB_PORT: ConfigEnvDefinition;
   ADMIN_SECURITY_TOKEN: ConfigEnvDefinition;
-  CADENCE_WEB_RBAC_ENABLED: ConfigEnvDefinition;
+  CADENCE_WEB_AUTH_STRATEGY: ConfigEnvDefinition;
   CLUSTERS: ConfigSyncResolverDefinition<
     undefined,
     ClustersConfigs,
@@ -106,9 +106,9 @@ const dynamicConfigs: {
     env: 'CADENCE_ADMIN_SECURITY_TOKEN',
     default: '',
   },
-  CADENCE_WEB_RBAC_ENABLED: {
-    env: 'CADENCE_WEB_RBAC_ENABLED',
-    default: 'false',
+  CADENCE_WEB_AUTH_STRATEGY: {
+    env: 'CADENCE_WEB_AUTH_STRATEGY',
+    default: 'disabled',
   },
   CLUSTERS: {
     resolver: clusters,
