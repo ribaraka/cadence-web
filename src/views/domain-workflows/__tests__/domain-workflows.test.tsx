@@ -39,7 +39,7 @@ describe('DomainWorkflows', () => {
     await setup({
       authResponse: {
         authEnabled: true,
-        isAuthenticated: true,
+        auth: { isValidToken: true },
         isAdmin: false,
         groups: ['reader'],
       },
@@ -53,7 +53,7 @@ describe('DomainWorkflows', () => {
     await setup({
       authResponse: {
         authEnabled: true,
-        isAuthenticated: true,
+        auth: { isValidToken: true },
         isAdmin: false,
         groups: ['reader'],
       },
@@ -92,7 +92,12 @@ describe('DomainWorkflows', () => {
             path: '/api/auth/me',
             httpMethod: 'GET',
             mockOnce: false,
-            jsonResponse: { groups: [] },
+            jsonResponse: {
+              authEnabled: false,
+              auth: { isValidToken: false },
+              isAdmin: false,
+              groups: [],
+            },
           },
           {
             path: '/api/clusters/test-cluster',
@@ -149,7 +154,12 @@ describe('DomainWorkflows', () => {
             path: '/api/auth/me',
             httpMethod: 'GET',
             mockOnce: false,
-            jsonResponse: { groups: [] },
+            jsonResponse: {
+              authEnabled: false,
+              auth: { isValidToken: false },
+              isAdmin: false,
+              groups: [],
+            },
           },
           {
             path: '/api/clusters/cluster-a',
@@ -188,6 +198,9 @@ async function setup({
   isAdvancedVisibility = false,
   error,
   authResponse = {
+    authEnabled: false,
+    auth: { isValidToken: false },
+    isAdmin: false,
     groups: [],
   },
   skipClusterRequest = false,

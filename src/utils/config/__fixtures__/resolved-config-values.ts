@@ -29,6 +29,10 @@ const mockResolvedConfigValues: LoadedConfigResolvedValues = {
     },
   ],
   CRON_LIST_ENABLED: false,
+  DOMAIN_ACCESS: {
+    canRead: true,
+    canWrite: true,
+  },
   WORKFLOW_ACTIONS_ENABLED: {
     terminate: 'ENABLED',
     cancel: 'ENABLED',

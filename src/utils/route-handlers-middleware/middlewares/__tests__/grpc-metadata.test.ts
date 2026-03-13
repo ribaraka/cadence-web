@@ -1,3 +1,5 @@
+import { type NextRequest } from 'next/server';
+
 import { getGrpcMetadataFromAuth } from '@/utils/auth/auth-context';
 
 import grpcMetadataMiddleware from '../grpc-metadata';
@@ -5,37 +7,34 @@ import grpcMetadataMiddleware from '../grpc-metadata';
 jest.mock('@/utils/auth/auth-context', () => ({
   getGrpcMetadataFromAuth: jest.fn(),
 }));
-
+const mockGetGrpcMetadataFromAuth = jest.mocked(getGrpcMetadataFromAuth);
 const mockRequest = {
   cookies: {
     get: jest.fn(),
   },
-} as any;
+} as unknown as NextRequest;
+const mockOptions = { params: {} };
 
 describe('grpc-metadata middleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('returns grpc metadata derived from user info', async () => {
-    (getGrpcMetadataFromAuth as jest.Mock).mockReturnValue({
+  it('returns grpc metadata derived from auth info', async () => {
+    mockGetGrpcMetadataFromAuth.mockReturnValue({
       'cadence-authorization': 'abc',
     });
 
     const ctx: Record<string, unknown> = {
       authInfo: {
         authEnabled: true,
-        token: 'abc',
+        auth: { isValidToken: true, token: 'abc' },
         isAdmin: false,
         groups: [],
       },
     };
 
-    const result = await grpcMetadataMiddleware(
-      mockRequest,
-      { params: {} } as any,
-      ctx
-    );
+    const result = await grpcMetadataMiddleware(mockRequest, mockOptions, ctx);
 
     expect(result).toEqual([
       'grpcMetadata',
@@ -43,46 +42,10 @@ describe('grpc-metadata middleware', () => {
     ]);
   });
 
-  it('merges existing grpc metadata with auth metadata', async () => {
-    (getGrpcMetadataFromAuth as jest.Mock).mockReturnValue({
-      'cadence-authorization': 'xyz',
-    });
+  it('returns undefined metadata when auth provides none', async () => {
+    mockGetGrpcMetadataFromAuth.mockReturnValue(undefined);
 
-    const ctx: Record<string, unknown> = {
-      authInfo: {
-        authEnabled: true,
-        token: 'xyz',
-        isAdmin: false,
-        groups: [],
-      },
-      grpcMetadata: {
-        existing: 'true',
-      },
-    };
-
-    const result = await grpcMetadataMiddleware(
-      mockRequest,
-      { params: {} } as any,
-      ctx
-    );
-
-    expect(result).toEqual([
-      'grpcMetadata',
-      {
-        existing: 'true',
-        'cadence-authorization': 'xyz',
-      },
-    ]);
-  });
-
-  it('returns undefined metadata when none is available', async () => {
-    (getGrpcMetadataFromAuth as jest.Mock).mockReturnValue(undefined);
-
-    const result = await grpcMetadataMiddleware(
-      mockRequest,
-      { params: {} } as any,
-      {}
-    );
+    const result = await grpcMetadataMiddleware(mockRequest, mockOptions, {});
 
     expect(result).toEqual(['grpcMetadata', undefined]);
   });

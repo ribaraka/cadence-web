@@ -34,10 +34,6 @@ const buildRequest = (cookie?: string) => {
   });
 };
 
-const expectNoStore = (response: Response) => {
-  expect(response.headers.get('Cache-Control')).toBe('no-store');
-};
-
 describe('GET /api/auth/me', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -59,7 +55,7 @@ describe('GET /api/auth/me', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       authEnabled: true,
-      isAuthenticated: true,
+      auth: { isValidToken: true },
       isAdmin: false,
       groups: ['reader', 'writer'],
       userName: 'test-user',
@@ -77,7 +73,7 @@ describe('GET /api/auth/me', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       authEnabled: true,
-      isAuthenticated: false,
+      auth: { isValidToken: false },
       isAdmin: false,
       groups: [],
     });
@@ -93,7 +89,7 @@ describe('GET /api/auth/me', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({
       authEnabled: false,
-      isAuthenticated: false,
+      auth: { isValidToken: false },
     });
   });
 
@@ -113,6 +109,6 @@ describe('GET /api/auth/me', () => {
 
     const response = await GET(buildRequest());
 
-    expectNoStore(response);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
 });

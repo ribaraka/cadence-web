@@ -2,7 +2,7 @@ import { HttpResponse } from 'msw';
 
 import { renderHook, waitFor } from '@/test-utils/rtl';
 
-import useUserInfo from '../use-user-info';
+import useUserInfo from '../use-user-info/use-user-info';
 
 describe(useUserInfo.name, () => {
   it('should return user info from the API', async () => {
@@ -11,7 +11,7 @@ describe(useUserInfo.name, () => {
     await waitFor(() => {
       expect(result.current.data).toMatchObject({
         authEnabled: true,
-        isAuthenticated: true,
+        auth: { isValidToken: true },
       });
     });
   });
@@ -40,7 +40,7 @@ describe(useUserInfo.name, () => {
             }
             return HttpResponse.json({
               authEnabled: true,
-              isAuthenticated: true,
+              auth: { isValidToken: true },
               isAdmin: false,
               groups: ['reader'],
             });

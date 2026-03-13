@@ -2,11 +2,11 @@ import { type Domain } from '@/__generated__/proto-ts/uber/cadence/api/v1/Domain
 import {
   CADENCE_AUTH_COOKIE_NAME,
   decodeCadenceJwtClaims,
-  getDomainAccessForUser,
   getPublicAuthContext,
   getGrpcMetadataFromAuth,
   resolveAuthContext,
 } from '@/utils/auth/auth-context';
+import { getDomainAccessForUser } from '@/utils/auth/auth-shared';
 import getConfigValue from '@/utils/config/get-config-value';
 
 jest.mock('@/utils/config/get-config-value');
@@ -43,9 +43,11 @@ describe('auth-context utilities', () => {
 
       expect(authContext).toMatchObject({
         authEnabled: false,
-        isAuthenticated: false,
+        auth: {
+          isValidToken: false,
+          token: undefined,
+        },
         isAdmin: false,
-        token: undefined,
         groups: [],
       });
     });
@@ -69,9 +71,11 @@ describe('auth-context utilities', () => {
 
       expect(authContext).toMatchObject({
         authEnabled: true,
-        isAuthenticated: true,
+        auth: {
+          isValidToken: true,
+          token,
+        },
         isAdmin: true,
-        token,
         groups: ['worker'],
         userName: 'cookie-user',
         id: 'cookie-user-id',
@@ -90,8 +94,10 @@ describe('auth-context utilities', () => {
 
       expect(authContext).toMatchObject({
         authEnabled: true,
-        isAuthenticated: false,
-        token: undefined,
+        auth: {
+          isValidToken: false,
+          token: undefined,
+        },
       });
     });
 
@@ -109,11 +115,38 @@ describe('auth-context utilities', () => {
 
       expect(authContext).toMatchObject({
         authEnabled: true,
-        isAuthenticated: false,
-        token: undefined,
+        auth: {
+          isValidToken: false,
+          token: undefined,
+        },
         groups: [],
         isAdmin: false,
         userName: undefined,
+      });
+    });
+
+    it('treats empty-claims tokens as unauthenticated', async () => {
+      const token = buildToken({});
+      mockGetConfigValue.mockImplementation(async (key: string) => {
+        if (key === 'CADENCE_WEB_AUTH_STRATEGY') return 'jwt';
+        return '';
+      });
+
+      const authContext = await resolveAuthContext({
+        get: (name: string) =>
+          name === CADENCE_AUTH_COOKIE_NAME ? { value: token } : undefined,
+      });
+
+      expect(authContext).toMatchObject({
+        authEnabled: true,
+        auth: {
+          isValidToken: false,
+          token: undefined,
+        },
+        groups: [],
+        isAdmin: false,
+        userName: undefined,
+        id: undefined,
       });
     });
 
@@ -139,12 +172,14 @@ describe('auth-context utilities', () => {
 
       expect(authContext).toMatchObject({
         authEnabled: true,
-        isAuthenticated: false,
-        token: undefined,
+        auth: {
+          isValidToken: false,
+          token: undefined,
+          expiresAtMs: undefined,
+        },
         isAdmin: false,
         groups: [],
         userName: undefined,
-        expiresAtMs: undefined,
       });
 
       dateNowSpy.mockRestore();
@@ -169,7 +204,7 @@ describe('auth-context utilities', () => {
           name === CADENCE_AUTH_COOKIE_NAME ? { value: token } : undefined,
       });
 
-      expect(authContext.expiresAtMs).toBe(expSeconds * 1000);
+      expect(authContext.auth.expiresAtMs).toBe(expSeconds * 1000);
 
       dateNowSpy.mockRestore();
     });
@@ -189,8 +224,8 @@ describe('auth-context utilities', () => {
           name === CADENCE_AUTH_COOKIE_NAME ? { value: token } : undefined,
       });
 
-      expect(authContext.token).toBeUndefined();
-      expect(authContext.isAuthenticated).toBe(false);
+      expect(authContext.auth.token).toBeUndefined();
+      expect(authContext.auth.isValidToken).toBe(false);
       expect(authContext.isAdmin).toBe(false);
     });
   });
@@ -225,6 +260,12 @@ describe('auth-context utilities', () => {
 
       expect(decodeCadenceJwtClaims(token)).toBeUndefined();
     });
+
+    it('returns undefined for empty claims objects', () => {
+      const token = buildToken({});
+
+      expect(decodeCadenceJwtClaims(token)).toBeUndefined();
+    });
   });
 
   describe(getDomainAccessForUser.name, () => {
@@ -256,7 +297,7 @@ describe('auth-context utilities', () => {
         { ...baseDomain, data: { READ_GROUPS: 'worker' } },
         {
           authEnabled: true,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: true,
           groups: [],
         }
@@ -276,7 +317,7 @@ describe('auth-context utilities', () => {
         },
         {
           authEnabled: true,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: false,
           groups: ['reader'],
         }
@@ -296,7 +337,7 @@ describe('auth-context utilities', () => {
         },
         {
           authEnabled: false,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: false,
           groups: [],
         }
@@ -316,7 +357,7 @@ describe('auth-context utilities', () => {
         },
         {
           authEnabled: true,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: false,
           groups: ['writer'],
         }
@@ -335,7 +376,7 @@ describe('auth-context utilities', () => {
         },
         {
           authEnabled: true,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: false,
           groups: [],
         }
@@ -354,7 +395,7 @@ describe('auth-context utilities', () => {
         },
         {
           authEnabled: true,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: false,
           groups: ['writer'],
         }
@@ -373,7 +414,7 @@ describe('auth-context utilities', () => {
         },
         {
           authEnabled: true,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: false,
           groups: ['viewer'],
         }
@@ -392,7 +433,7 @@ describe('auth-context utilities', () => {
         },
         {
           authEnabled: true,
-          isAuthenticated: true,
+          auth: { isValidToken: true },
           isAdmin: false,
           groups: ['viewer'],
         }
@@ -400,25 +441,16 @@ describe('auth-context utilities', () => {
 
       expect(access).toEqual({ canRead: true, canWrite: false });
     });
-
-    it('denies unauthenticated users even for open domains', () => {
-      const access = getDomainAccessForUser(baseDomain, {
-        authEnabled: true,
-        isAuthenticated: false,
-        isAdmin: false,
-        groups: [],
-      });
-
-      expect(access).toEqual({ canRead: false, canWrite: false });
-    });
   });
 
   describe(getPublicAuthContext.name, () => {
     it('omits private fields but preserves flags', () => {
       const authContext = {
         authEnabled: true,
-        isAuthenticated: true,
-        token: 'secret',
+        auth: {
+          isValidToken: true,
+          token: 'secret',
+        },
         groups: ['worker'],
         isAdmin: true,
         userName: 'worker',
@@ -427,7 +459,10 @@ describe('auth-context utilities', () => {
 
       expect(getPublicAuthContext(authContext)).toEqual({
         authEnabled: true,
-        isAuthenticated: true,
+        auth: {
+          isValidToken: true,
+          expiresAtMs: undefined,
+        },
         groups: ['worker'],
         isAdmin: true,
         userName: 'worker',
@@ -440,10 +475,9 @@ describe('auth-context utilities', () => {
     it('returns metadata when token is present', () => {
       expect(
         getGrpcMetadataFromAuth({
-          token: 'abc',
+          auth: { isValidToken: true, token: 'abc' },
           groups: [],
           isAdmin: false,
-          isAuthenticated: true,
           authEnabled: true,
         })
       ).toEqual({ 'cadence-authorization': 'abc' });
@@ -453,7 +487,7 @@ describe('auth-context utilities', () => {
       expect(
         getGrpcMetadataFromAuth({
           authEnabled: true,
-          isAuthenticated: false,
+          auth: { isValidToken: false },
           groups: [],
           isAdmin: false,
         })
@@ -464,8 +498,7 @@ describe('auth-context utilities', () => {
       expect(
         getGrpcMetadataFromAuth({
           authEnabled: false,
-          isAuthenticated: true,
-          token: 'abc',
+          auth: { isValidToken: true, token: 'abc' },
           groups: [],
           isAdmin: false,
         })

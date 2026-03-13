@@ -1,81 +1,51 @@
+import { type NextRequest } from 'next/server';
+
 import userInfoMiddleware from '../user-info';
+
+const mockRequest = { cookies: {} } as unknown as NextRequest;
+const mockOptions = { params: {} };
 
 describe('user-info middleware', () => {
   it('returns user info derived from auth info', async () => {
     const ctx: Record<string, unknown> = {
       authInfo: {
         authEnabled: true,
-        token: 'abc',
+        auth: { isValidToken: true, token: 'abc' },
         isAdmin: false,
         groups: [],
         userName: 'tester',
-        id: 'tester',
+        id: '123',
       },
     };
 
-    const result = await userInfoMiddleware(
-      { cookies: {} } as any,
-      { params: {} } as any,
-      ctx
-    );
+    const result = await userInfoMiddleware(mockRequest, mockOptions, ctx);
 
     expect(result).toEqual([
       'userInfo',
       {
-        id: 'tester',
+        id: '123',
         userName: 'tester',
       },
     ]);
   });
 
-  it('returns undefined when auth info is missing', async () => {
-    const result = await userInfoMiddleware(
-      { cookies: {} } as any,
-      { params: {} } as any,
-      {}
-    );
+  it('returns null when auth info is missing', async () => {
+    const result = await userInfoMiddleware(mockRequest, mockOptions, {});
 
-    expect(result).toEqual(['userInfo', undefined]);
+    expect(result).toEqual(['userInfo', null]);
   });
 
-  it('returns undefined when auth info has no id and userName', async () => {
-    const result = await userInfoMiddleware(
-      { cookies: {} } as any,
-      { params: {} } as any,
-      {
-        authInfo: {
-          authEnabled: true,
-          isAdmin: false,
-          groups: [],
-          token: 'abc',
-        },
-      }
-    );
-
-    expect(result).toEqual(['userInfo', undefined]);
-  });
-
-  it('returns partial user info when only userName exists', async () => {
-    const result = await userInfoMiddleware(
-      { cookies: {} } as any,
-      { params: {} } as any,
-      {
-        authInfo: {
-          authEnabled: true,
-          isAdmin: false,
-          groups: [],
-          token: 'abc',
-          userName: 'display-name',
-        },
-      }
-    );
-
-    expect(result).toEqual([
-      'userInfo',
-      {
-        id: undefined,
+  it('returns null when auth info has no id', async () => {
+    const result = await userInfoMiddleware(mockRequest, mockOptions, {
+      authInfo: {
+        authEnabled: true,
+        auth: { isValidToken: true, token: 'abc' },
+        isAdmin: false,
+        groups: [],
         userName: 'display-name',
       },
-    ]);
+    });
+
+    expect(result).toEqual(['userInfo', null]);
   });
 });
