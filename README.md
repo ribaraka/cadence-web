@@ -29,7 +29,7 @@ Set these environment variables if you need to change their defaults.
 | CADENCE_WEB_PORT             | HTTP port to serve on                                                         | 8088             |
 | CADENCE_WEB_HOSTNAME         | Host name to serve on                                                         | 0.0.0.0          |
 | CADENCE_ADMIN_SECURITY_TOKEN | Admin token for accessing admin methods                                       | ''               |
-| CADENCE_WEB_AUTH_STRATEGY    | Auth strategy: `disabled` or `jwt`.                                           | disabled         |
+| CADENCE_WEB_AUTH_STRATEGY    | Auth strategy resolver. Supported values: `disabled` or `jwt`; invalid or unset values fall back to `disabled`. | disabled         |
 | CADENCE_GRPC_TLS_CA_FILE     | Path to root CA certificate file for enabling one-way TLS on gRPC connections | ''               |
 | CADENCE_WEB_SERVICE_NAME     | Name of the web service used as GRPC caller and OTEL resource name            | cadence-web      |
 
@@ -45,7 +45,9 @@ CADENCE_CLUSTERS_NAMES=cluster0,cluster1
 
 #### JWT Authentication (cookie)
 
-When `CADENCE_WEB_AUTH_STRATEGY=jwt`, cadence-web authenticates using a cookie:
+`CADENCE_WEB_AUTH_STRATEGY` is resolved server-side to one of the supported auth strategies: `disabled` or `jwt`. Invalid or unset values fall back to `disabled`.
+
+When the resolved strategy is `jwt`, cadence-web authenticates using a cookie:
 
 - Cookie name: `cadence-authorization`
 - Cookie value: raw JWT string

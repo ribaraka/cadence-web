@@ -185,19 +185,7 @@ describe('DomainPageStartWorkflowButton', () => {
     );
 
     await setup(defaultProps, {
-      authResponse: {
-        authEnabled: true,
-        isAuthenticated: true,
-        isAdmin: false,
-        groups: ['reader'],
-      },
-      domainResponse: {
-        name: 'test-domain',
-        data: {
-          READ_GROUPS: 'reader',
-          WRITE_GROUPS: 'writer',
-        },
-      },
+      startActionEnabledConfig: 'DISABLED_UNAUTHORIZED',
     });
 
     await waitFor(() => {
@@ -226,11 +214,9 @@ describe('DomainPageStartWorkflowButton', () => {
 function setup(
   props: Props,
   options: {
-    startActionEnabledConfig?: string;
+    startActionEnabledConfig?: WorkflowActionEnabledConfigValue;
     isConfigLoading?: boolean;
     isConfigError?: boolean;
-    authResponse?: Record<string, unknown>;
-    domainResponse?: Record<string, unknown>;
   } = {}
 ) {
   const user = userEvent.setup();
@@ -239,36 +225,14 @@ function setup(
       .start,
     isConfigLoading = false,
     isConfigError = false,
-    authResponse = {
-      authEnabled: false,
-      isAuthenticated: false,
-      isAdmin: false,
-      groups: [],
-    },
-    domainResponse = {
-      name: 'test-domain',
-      data: {},
-    },
   } = options;
 
   const renderResult = render(<DomainPageStartWorkflowButton {...props} />, {
     endpointsMocks: [
       {
-        path: '/api/auth/me',
-        httpMethod: 'GET',
-        httpResolver: async () =>
-          HttpResponse.json(authResponse, { status: 200 }),
-      },
-      {
-        path: '/api/domains/test-domain/test-cluster',
-        httpMethod: 'GET',
-        httpResolver: async () =>
-          HttpResponse.json(domainResponse, { status: 200 }),
-      },
-      {
         path: '/api/config',
         httpMethod: 'GET',
-        mockOnce: true,
+        mockOnce: false,
         httpResolver: async () => {
           if (isConfigError) {
             return HttpResponse.json(
@@ -280,11 +244,10 @@ function setup(
             return new Promise(() => {});
           }
 
-          const response = {
+          return HttpResponse.json({
             ...mockResolvedConfigValues.WORKFLOW_ACTIONS_ENABLED,
             start: startActionEnabledConfig,
-          };
-          return HttpResponse.json(response);
+          });
         },
       },
     ],

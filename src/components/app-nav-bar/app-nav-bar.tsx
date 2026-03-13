@@ -1,39 +1,210 @@
 'use client';
-import React from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { AppNavBar as BaseAppNavBar } from 'baseui/app-nav-bar';
+import { DURATION, useSnackbar } from 'baseui/snackbar';
 import NextLink from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 
 import useStyletronClasses from '@/hooks/use-styletron-classes';
 
 import AuthTokenModal from '../auth-token-modal/auth-token-modal';
 
 import { cssStyles } from './app-nav-bar.styles';
-import useAuthLifecycle from './use-auth-lifecycle';
-
-const LOGIN_ITEM = 'login';
-const LOGOUT_ITEM = 'logout';
+import useAuthLifecycle from './hooks/use-auth-lifecycle';
+import {
+  ERROR_SNACKBAR_OVERRIDES,
+  LOGIN_ITEM,
+  LOGOUT_ITEM,
+} from './use-auth-lifecycle.constants';
+import { type UserMenuItem } from './use-auth-lifecycle.types';
 
 export default function AppNavBar() {
   const { cls } = useStyletronClasses(cssStyles);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { enqueue } = useSnackbar();
 
   const {
     isAuthEnabled,
-    isAuthenticated,
-    username,
-    usernameSubtitle,
-    userItems,
-    isModalOpen,
-    openModal,
-    closeModal,
+    isValidToken,
+    isAuthLoading,
+    isAdmin,
+    userName,
+    expiresAtMs,
     saveToken,
     logout,
   } = useAuthLifecycle();
 
+  const logoutInFlightRef = useRef(false);
+  const logoutReasonRef = useRef<'manual' | 'expired' | null>(null);
+  const prevIsValidTokenRef = useRef<boolean | null>(null);
+  const latestExpiresAtRef = useRef(expiresAtMs);
+  latestExpiresAtRef.current = expiresAtMs;
+  const expiryTimeoutIdRef = useRef<number | null>(null);
+
+  const showErrorSnackbar = useCallback(
+    (
+      message: string,
+      duration = DURATION.medium,
+      dismissActionLabel?: string
+    ) => {
+      enqueue(
+        {
+          message,
+          ...(dismissActionLabel ? { actionMessage: dismissActionLabel } : {}),
+          overrides: ERROR_SNACKBAR_OVERRIDES,
+        },
+        duration
+      );
+    },
+    [enqueue]
+  );
+
+  const handleLogout = useCallback(
+    async (reason: 'manual' | 'expired') => {
+      if (logoutInFlightRef.current) return;
+      logoutInFlightRef.current = true;
+      logoutReasonRef.current = reason;
+      try {
+        await logout();
+      } catch (e) {
+        logoutReasonRef.current = null;
+        const message = e instanceof Error ? e.message : 'Failed to sign out';
+        showErrorSnackbar(message);
+      } finally {
+        router.refresh();
+        router.replace('/domains');
+        logoutInFlightRef.current = false;
+      }
+    },
+    [logout, router, showErrorSnackbar]
+  );
+
+  const handleSaveToken = useCallback(
+    async (token: string): Promise<boolean> => {
+      const isValid = await saveToken(token);
+      if (!isValid) {
+        showErrorSnackbar('Token is expired or invalid');
+        return false;
+      }
+
+      enqueue({ message: 'Token saved' }, DURATION.short);
+      router.refresh();
+      return true;
+    },
+    [saveToken, enqueue, router, showErrorSnackbar]
+  );
+
+  useEffect(() => {
+    if (!isAuthEnabled || isAuthLoading) return;
+    const prevIsValidToken = prevIsValidTokenRef.current;
+    prevIsValidTokenRef.current = isValidToken;
+
+    if (prevIsValidToken === true && !isValidToken) {
+      const reason = logoutReasonRef.current;
+      logoutReasonRef.current = null;
+      if (reason === 'manual') {
+        enqueue({ message: 'Signed out' }, DURATION.medium);
+      } else {
+        showErrorSnackbar(
+          'Session expired. Please sign in again.',
+          DURATION.infinite,
+          'Dismiss'
+        );
+      }
+      if (pathname === '/domains') {
+        router.refresh();
+      } else {
+        router.replace('/domains');
+      }
+    }
+  }, [
+    isValidToken,
+    isAuthLoading,
+    isAuthEnabled,
+    pathname,
+    router,
+    enqueue,
+    showErrorSnackbar,
+  ]);
+
+  useEffect(() => {
+    const clearExpiryTimeout = () => {
+      if (expiryTimeoutIdRef.current === null) return;
+      window.clearTimeout(expiryTimeoutIdRef.current);
+      expiryTimeoutIdRef.current = null;
+    };
+
+    clearExpiryTimeout();
+
+    if (
+      !isAuthEnabled ||
+      !isValidToken ||
+      expiresAtMs === undefined ||
+      logoutInFlightRef.current
+    ) {
+      return clearExpiryTimeout;
+    }
+
+    const timeoutMs = expiresAtMs - Date.now();
+    const logoutIfCurrent = () => {
+      if (logoutInFlightRef.current) return;
+      if (latestExpiresAtRef.current !== expiresAtMs) return;
+      void handleLogout('expired');
+    };
+
+    expiryTimeoutIdRef.current = window.setTimeout(
+      logoutIfCurrent,
+      Math.max(0, timeoutMs)
+    );
+
+    return clearExpiryTimeout;
+  }, [expiresAtMs, isValidToken, isAuthEnabled, handleLogout]);
+
+  const userItems = useMemo<UserMenuItem[] | undefined>(() => {
+    if (!isAuthEnabled) return undefined;
+    if (!isValidToken) {
+      return [{ label: 'Login with JWT', info: LOGIN_ITEM }];
+    }
+    return [
+      { label: 'Switch token', info: LOGIN_ITEM },
+      { label: 'Logout', info: LOGOUT_ITEM },
+    ];
+  }, [isAuthEnabled, isValidToken]);
+
+  const username = useMemo(() => {
+    if (!isAuthEnabled) {
+      return undefined;
+    }
+    if (isAuthLoading) {
+      return 'Checking access...';
+    }
+    return isValidToken
+      ? userName || 'Authenticated user (unknown username)'
+      : 'Authenticate';
+  }, [isAuthEnabled, isAuthLoading, isValidToken, userName]);
+
+  const usernameSubtitle =
+    isAuthEnabled && isValidToken
+      ? isAdmin
+        ? 'Admin'
+        : undefined
+      : isAuthEnabled
+        ? 'Provide a Cadence JWT'
+        : undefined;
+
   return (
     <>
       <BaseAppNavBar
-        key={`${isAuthEnabled}-${isAuthenticated}`}
+        key={`${isAuthEnabled}-${isValidToken}`}
         title={
           <NextLink href="/">
             <svg
@@ -53,17 +224,20 @@ export default function AppNavBar() {
         userItems={userItems}
         onUserItemSelect={(item) => {
           if (item.info === LOGIN_ITEM) {
-            openModal();
+            setIsModalOpen(true);
           } else if (item.info === LOGOUT_ITEM) {
-            void logout();
+            void handleLogout('manual');
           }
         }}
       />
       {isAuthEnabled && (
         <AuthTokenModal
           isOpen={isModalOpen}
-          onClose={closeModal}
-          onSubmit={saveToken}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={async (token) => {
+            const saved = await handleSaveToken(token);
+            if (saved) setIsModalOpen(false);
+          }}
         />
       )}
     </>

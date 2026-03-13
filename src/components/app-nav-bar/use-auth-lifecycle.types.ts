@@ -5,13 +5,11 @@ export type UserMenuItem = {
 
 export type AuthLifecycle = {
   isAuthEnabled: boolean;
-  isAuthenticated: boolean;
-  username: string | undefined;
-  usernameSubtitle: string | undefined;
-  userItems: UserMenuItem[] | undefined;
-  isModalOpen: boolean;
-  openModal: () => void;
-  closeModal: () => void;
-  saveToken: (token: string) => Promise<void>;
+  isValidToken: boolean;
+  isAuthLoading: boolean;
+  isAdmin: boolean;
+  userName?: string;
+  expiresAtMs?: number;
+  saveToken: (token: string) => Promise<boolean>;
   logout: () => Promise<void>;
 };

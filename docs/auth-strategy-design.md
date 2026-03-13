@@ -67,9 +67,8 @@ The Cadence server validates the token signature against a configured public key
 
 UI enforcement:
 
-* Login button to paste jwt token.
-* Workflow actions use access to enable/disable with “Not authorized” (for read-only users).
-* Domain list hides domains without read access.
+* Login button to paste JWT token.
+* Workflow actions are enabled/disabled from server-side config resolution, with unauthorized actions surfaced in the UI.
 * Unauthenticated: when auth is enabled, access is denied.
 
 Configurable auth: If turned off, Cadence-Web behaves as no login required, with full access as before.
@@ -108,9 +107,12 @@ Lifecycle (simplified):
 
 1. Token issuance
    - Upstream proxy/IdP sets `cadence-authorization` cookie on the cadence-web origin or
-   - Manual login via the "Authenticate with JWT" button (mostly for development reasons).
+   - Manual login via the "Login with JWT" button (mostly for development reasons).
 2. Session state
-   - Server reads cookie and derives `isAuthenticated`, `groups`, `isAdmin`, `userName`, and `expiresAtMs` from `exp`.
+   - Server reads cookie and derives public auth state:
+     - top-level: `authEnabled`, `groups`, `isAdmin`, `userName`, `id`
+     - nested `auth`: `isValidToken`, `expiresAtMs`
+   - The private JWT token remains server-only under `auth.token`.
 3. Client UI
    - `GET /api/auth/me` returns public auth context for UI/hook usage.
 4. Session expiry
@@ -125,7 +127,9 @@ Lifecycle (simplified):
 Key components:
 - `resolveAuthContext` (server) decodes claims and derives auth state.
 - `AppNavBar` handles login/switch/logout and expiry UX.
-- `useUserInfo` / `useDomainAccess` provide auth gating for UI components.
+- `useUserInfo` exposes the public auth context to client components.
+- `DOMAIN_ACCESS` resolves per-domain read/write access on the server.
+- `WORKFLOW_ACTIONS_ENABLED` composes `DOMAIN_ACCESS` and returns the final workflow action states consumed by the UI.
 
 ## Behavior in different setups
 
@@ -138,6 +142,11 @@ Reference: https://github.com/cadence-workflow/cadence/discussions/7508#discussi
 * All users have full access.
 * No permission indicators.
 * `cadence-authorization` cookie is ignored and not forwarded to backend gRPC calls.
+
+Notes:
+- `CADENCE_WEB_AUTH_STRATEGY` is a typed server-start resolver.
+- Supported values are `disabled` and `jwt`.
+- Invalid or unset values resolve to `disabled`.
 
 ### 2 Upstream Auth Gateway (Recommended for Production)
 
@@ -194,7 +203,7 @@ cadence-web responsibilities:
 * Read JWT from `cadence-authorization` cookie.
 * Decode claims for UI access decisions.
 * Forward JWT to backend in gRPC metadata `cadence-authorization`.
-* Show/hide/disable UI elements.
+* Disable or hide UI affordances where appropriate, while keeping backend authorization as the source of truth.
 * Display authorization errors.
 
 Backend (Cadence services) responsibilities:
@@ -281,6 +290,7 @@ or use button in UI
 
 Notes:
 - `groups` must be a string (comma- or space-delimited).
+- `CADENCE_WEB_AUTH_STRATEGY` only accepts `disabled` and `jwt`; any other value falls back to `disabled`.
 
 ## Diagrams
 

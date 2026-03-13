@@ -1,33 +1,20 @@
 import 'server-only';
 
 import { cookies as getRequestCookies } from 'next/headers';
-import { z } from 'zod';
 
 import { type GRPCMetadata } from '@/utils/grpc/grpc-service';
 
 import getConfigValue from '../config/get-config-value';
 
+import { type CadenceJwtClaims, type CookieReader } from './auth-context.types';
+import { splitGroupList } from './auth-shared';
 import {
-  splitGroupList,
   type PublicAuthContext,
   type PrivateAuthContext,
-} from './auth-shared';
+} from './auth-shared.types';
+import { cadenceJwtClaimsSchema } from './schemas/cadence-jwt-claims-schema';
 
 export const CADENCE_AUTH_COOKIE_NAME = 'cadence-authorization';
-
-type CookieReader = {
-  get: (name: string) => { value: string } | undefined;
-};
-
-const cadenceJwtClaimsSchema = z.object({
-  admin: z.boolean().optional(),
-  exp: z.number().optional(),
-  groups: z.string().optional(),
-  name: z.string().optional(),
-  sub: z.string().optional(),
-});
-
-export type CadenceJwtClaims = z.infer<typeof cadenceJwtClaimsSchema>;
 
 export function decodeCadenceJwtClaims(
   token: string
@@ -59,9 +46,8 @@ export function decodeCadenceJwtClaims(
 export async function resolveAuthContext(
   cookieStore?: CookieReader
 ): Promise<PrivateAuthContext> {
-  const authStrategy =
-    (await getConfigValue('CADENCE_WEB_AUTH_STRATEGY')) ?? 'disabled';
-  const authEnabled = authStrategy.toLowerCase() === 'jwt';
+  const authStrategy = await getConfigValue('CADENCE_WEB_AUTH_STRATEGY');
+  const authEnabled = authStrategy === 'jwt';
 
   const cookies = cookieStore ?? getRequestCookies();
   const tokenFromCookie = cookies.get(CADENCE_AUTH_COOKIE_NAME)?.value?.trim();
@@ -87,37 +73,37 @@ export async function resolveAuthContext(
 
   return {
     authEnabled,
-    isAuthenticated: Boolean(effectiveToken),
-    token: effectiveToken,
+    auth: {
+      isValidToken: Boolean(effectiveToken),
+      token: effectiveToken,
+      expiresAtMs,
+    },
     groups,
     isAdmin,
     userName,
     id,
-    expiresAtMs,
   };
 }
 
 export function getGrpcMetadataFromAuth(
   authContext: PrivateAuthContext | null | undefined
 ): GRPCMetadata | undefined {
-  if (!authContext?.authEnabled || !authContext.token) {
+  if (!authContext?.authEnabled || !authContext.auth.token) {
     return undefined;
   }
 
   return {
-    'cadence-authorization': authContext.token,
+    'cadence-authorization': authContext.auth.token,
   };
 }
 
 export const getPublicAuthContext = ({
-  token: _token,
+  auth,
   ...publicFields
-}: PrivateAuthContext): PublicAuthContext => publicFields;
-
-export { getDomainAccessForUser } from './auth-shared';
-export type {
-  BaseAuthContext,
-  DomainAccess,
-  PrivateAuthContext,
-  PublicAuthContext,
-} from './auth-shared';
+}: PrivateAuthContext): PublicAuthContext => ({
+  ...publicFields,
+  auth: {
+    isValidToken: auth.isValidToken,
+    expiresAtMs: auth.expiresAtMs,
+  },
+});

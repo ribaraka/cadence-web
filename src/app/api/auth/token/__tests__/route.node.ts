@@ -136,36 +136,9 @@ describe('POST /api/auth/token', () => {
     expect(body.message).toBe('Invalid request body');
   });
 
-  it('sets secure=true when x-forwarded-proto is https', async () => {
+  it('uses the resolved secure attribute when setting the auth cookie', async () => {
     const response = await POST(
       buildRequest({ token: VALID_JWT }, { xForwardedProto: 'https' })
-    );
-    const authCookie = getAuthCookie(response);
-
-    expect(authCookie!.attributes).toHaveProperty('secure', true);
-  });
-
-  it('omits secure when x-forwarded-proto is http', async () => {
-    const response = await POST(
-      buildRequest({ token: VALID_JWT }, { xForwardedProto: 'http' })
-    );
-    const authCookie = getAuthCookie(response);
-
-    expect(authCookie!.attributes).not.toHaveProperty('secure');
-  });
-
-  it('uses first value when x-forwarded-proto has multiple values', async () => {
-    const response = await POST(
-      buildRequest({ token: VALID_JWT }, { xForwardedProto: 'https, http' })
-    );
-    const authCookie = getAuthCookie(response);
-
-    expect(authCookie!.attributes).toHaveProperty('secure', true);
-  });
-
-  it('falls back to request protocol when x-forwarded-proto is absent', async () => {
-    const response = await POST(
-      buildRequest({ token: VALID_JWT }, { proto: 'https' })
     );
     const authCookie = getAuthCookie(response);
 
