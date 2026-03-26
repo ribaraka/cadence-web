@@ -7,7 +7,6 @@ import type {
 } from '../../utils/config/config.types';
 
 import archivalDefaultSearchEnabled from './resolvers/archival-default-search-enabled';
-import batchActionsEnabled from './resolvers/batch-actions-enabled';
 import authStrategy from './resolvers/auth-strategy';
 import { type AuthStrategyConfigValue } from './resolvers/auth-strategy.types';
 import batchActionsEnabled from './resolvers/batch-actions-enabled';

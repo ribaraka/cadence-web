@@ -37,6 +37,7 @@ export default function DomainWorkflows(props: DomainPageTabContentProps) {
       request(`/api/clusters/${props.cluster}`).then((res) => res.json()),
     enabled: shouldFetchClusterInfo,
     retry: false,
+    throwOnError: shouldFetchClusterInfo,
   });
 
   const { data: isAdvancedVisibilityAvailableForNonAdmin } = useQuery<boolean>({
