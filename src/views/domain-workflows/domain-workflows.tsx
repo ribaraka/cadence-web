@@ -32,11 +32,12 @@ export default function DomainWorkflows(props: DomainPageTabContentProps) {
     Boolean(authInfo) && (!isAuthEnabled || isAdmin);
 
   const { data: clusterInfo } = useQuery<DescribeClusterResponse>({
-    queryKey: ['describeCluster', props],
+    queryKey: ['describeCluster', props.cluster],
     queryFn: () =>
       request(`/api/clusters/${props.cluster}`).then((res) => res.json()),
     enabled: shouldFetchClusterInfo,
     retry: false,
+    throwOnError: shouldFetchClusterInfo,
   });
 
   const isAdvancedVisibilityEnabled = useMemo(() => {
