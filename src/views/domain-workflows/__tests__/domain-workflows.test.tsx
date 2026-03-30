@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import { Suspense } from 'react';
 
 import { HttpResponse } from 'msw';
 
@@ -16,20 +16,6 @@ jest.mock('../domain-workflows-advanced/domain-workflows-advanced', () =>
   jest.fn(() => <div>Advanced Workflows</div>)
 );
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: string | null }
-> {
-  state = { error: null };
-  static getDerivedStateFromError(error: Error) {
-    return { error: error.message };
-  }
-  render() {
-    if (this.state.error) return <div>{this.state.error}</div>;
-    return this.props.children;
-  }
-}
-
 describe('DomainWorkflows', () => {
   it('should render basic workflows table when advanced visibility is disabled', async () => {
     await setup({ isAdvancedVisibility: false });
@@ -42,42 +28,6 @@ describe('DomainWorkflows', () => {
 
     expect(await screen.findByText('Advanced Workflows')).toBeInTheDocument();
   });
-
-  it('should throw on error', async () => {
-    await setup({ error: true });
-
-    expect(
-      await screen.findByText('Failed to fetch cluster info')
-    ).toBeInTheDocument();
-  });
-
-  it('should render advanced workflows for non-admin users when advanced visibility probe succeeds', async () => {
-    await setup({
-      authResponse: {
-        authEnabled: true,
-        auth: { isValidToken: true },
-        isAdmin: false,
-        groups: ['reader'],
-      },
-      isAdvancedVisibilityProbeEnabled: true,
-    });
-
-    expect(await screen.findByText('Advanced Workflows')).toBeInTheDocument();
-  });
-
-  it('should render basic workflows for non-admin users when advanced visibility probe fails', async () => {
-    await setup({
-      authResponse: {
-        authEnabled: true,
-        auth: { isValidToken: true },
-        isAdmin: false,
-        groups: ['reader'],
-      },
-      isAdvancedVisibilityProbeEnabled: false,
-    });
-
-    expect(await screen.findByText('Basic Workflows')).toBeInTheDocument();
-  });
 });
 
 async function setup({
@@ -89,12 +39,10 @@ async function setup({
     isAdmin: false,
     groups: [],
   },
-  isAdvancedVisibilityProbeEnabled,
 }: {
-  isAdvancedVisibility?: boolean;
   error?: boolean;
+  isAdvancedVisibility?: boolean;
   authResponse?: Record<string, unknown>;
-  isAdvancedVisibilityProbeEnabled?: boolean;
 }) {
   const props: DomainPageTabContentProps = {
     domain: 'test-domain',
@@ -102,11 +50,9 @@ async function setup({
   };
 
   render(
-    <ErrorBoundary>
-      <Suspense>
-        <DomainWorkflows {...props} />
-      </Suspense>
-    </ErrorBoundary>,
+    <Suspense>
+      <DomainWorkflows {...props} />
+    </Suspense>,
     {
       endpointsMocks: [
         {
@@ -123,7 +69,7 @@ async function setup({
         },
         {
           path: '/api/clusters/test-cluster',
-          httpMethod: 'GET' as const,
+          httpMethod: 'GET',
           mockOnce: false,
           ...(error
             ? {
@@ -152,30 +98,6 @@ async function setup({
                 } satisfies DescribeClusterResponse,
               }),
         },
-        ...(isAdvancedVisibilityProbeEnabled !== undefined
-          ? [
-              {
-                path: '/api/domains/:domain/:cluster/workflows',
-                httpMethod: 'GET' as const,
-                mockOnce: false,
-                ...(isAdvancedVisibilityProbeEnabled
-                  ? {
-                      jsonResponse: {
-                        workflows: [],
-                        nextPage: '',
-                      },
-                    }
-                  : {
-                      httpResolver: () => {
-                        return HttpResponse.json(
-                          { message: 'Advanced visibility is not supported' },
-                          { status: 404 }
-                        );
-                      },
-                    }),
-              },
-            ]
-          : []),
       ],
     }
   );

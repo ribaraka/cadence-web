@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useMemo } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
@@ -26,51 +26,37 @@ export default function DomainWorkflows(props: DomainPageTabContentProps) {
   const isAdmin = authInfo?.isAdmin === true;
   const isAuthEnabled = authInfo?.authEnabled === true;
   const isValidToken = authInfo?.auth?.isValidToken === true;
-  const isValidTokenNonAdmin = isAuthEnabled && isValidToken && !isAdmin;
+  const isAuthenticatedNonAdmin = isAuthEnabled && isValidToken && !isAdmin;
 
   const shouldFetchClusterInfo =
-    authInfo !== undefined && (!isAuthEnabled || isAdmin);
+    Boolean(authInfo) && (!isAuthEnabled || isAdmin);
 
   const { data: clusterInfo } = useQuery<DescribeClusterResponse>({
-    queryKey: ['describeCluster', props.cluster],
+    queryKey: ['describeCluster', props],
     queryFn: () =>
       request(`/api/clusters/${props.cluster}`).then((res) => res.json()),
     enabled: shouldFetchClusterInfo,
     retry: false,
-    throwOnError: shouldFetchClusterInfo,
   });
 
-  const { data: isAdvancedVisibilityAvailableForNonAdmin } = useQuery<boolean>({
-    queryKey: ['probeAdvancedVisibility', props.domain, props.cluster],
-    queryFn: async () => {
-      try {
-        await request(
-          `/api/domains/${props.domain}/${props.cluster}/workflows?listType=default&inputType=search&timeColumn=StartTime&pageSize=1`
-        );
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    enabled: isValidTokenNonAdmin,
-    retry: false,
-  });
+  const isAdvancedVisibilityEnabled = useMemo(() => {
+    // Non-admin authenticated users may not be allowed to call describeCluster,
+    // so default them to the basic workflows view.
+    // TODO: Revisit the non-admin default to basic visibility once the https://github.com/cadence-workflow/cadence/issues/7784 is resolved.
+    if (isAuthenticatedNonAdmin) {
+      return false;
+    }
+    if (!clusterInfo) return false;
+    return isClusterAdvancedVisibilityEnabled(clusterInfo);
+  }, [clusterInfo, isAuthenticatedNonAdmin]);
 
   const { data: isNewWorkflowsListEnabled } = useSuspenseConfigValue(
     'WORKFLOWS_LIST_ENABLED'
   );
 
-  if (
-    isAuthLoading ||
-    (isValidTokenNonAdmin &&
-      isAdvancedVisibilityAvailableForNonAdmin === undefined)
-  ) {
+  if (isAuthLoading) {
     return null;
   }
-
-  const isAdvancedVisibilityEnabled = isValidTokenNonAdmin
-    ? isAdvancedVisibilityAvailableForNonAdmin ?? false
-    : isClusterAdvancedVisibilityEnabled(clusterInfo);
 
   if (!isAdvancedVisibilityEnabled) {
     return (
