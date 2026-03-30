@@ -220,7 +220,7 @@ Auth data flow:
 Browser cookie -> cadence-web -> gRPC metadata -> Cadence services
 ```
 
-### One of possible Authorization Model
+### Example Authorization Model
 
 Domains define:
 
