@@ -4,7 +4,10 @@
 Cadence does not provide built-in access control for its Web. As a result, there is no mechanism for authorized users to interact with the UI.
 While it’s technically possible to modify the code and rebuild the client, this approach is inconvenient and not practical for most users.
 Cadence handles most access control on the backend. Each API endpoint is associated with a specific permission level (admin, write, read). 
-A domain defines who can read or write by specifying groups in its metadata (e.g., WRITE_GROUPS, READ_GROUPS). 
+A domain defines who can read or write by specifying groups in its metadata (e.g., WRITE_GROUPS, READ_GROUPS).
+Note: this is one possible access model for `cadence-web`, including examples based on domain metadata (`READ_GROUPS` / `WRITE_GROUPS`). Those examples are illustrative,
+not a strict requirement. The implementation keeps access resolution behind dynamic config resolvers (e.g.`DOMAIN_ACCESS`), so deployments can provide a different
+restriction model if needed.
 This means authorization is enforced server-side. So, it is necessary to issue a JWT that contains the user’s group memberships. 
 Cadence then checks those groups against the domain’s allowed groups to determine access. For example:
 ```
@@ -217,7 +220,7 @@ Auth data flow:
 Browser cookie -> cadence-web -> gRPC metadata -> Cadence services
 ```
 
-### Authorization Model
+### One of possible Authorization Model
 
 Domains define:
 

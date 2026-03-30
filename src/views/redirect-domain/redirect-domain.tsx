@@ -1,8 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import queryString from 'query-string';
 
-import { resolveAuthContext } from '@/utils/auth/auth-context';
-
 import getCachedAllDomains from '../domains-page/helpers/get-cached-all-domains';
 
 import { type Props } from './redirect-domain.types';
@@ -15,8 +13,7 @@ export default async function RedirectDomain(props: Props) {
 
   const domain = decodeURIComponent(encodedDomain);
 
-  const authContext = await resolveAuthContext();
-  const { domains } = await getCachedAllDomains(authContext);
+  const { domains } = await getCachedAllDomains();
 
   const [domainDetails, ...restDomains] = domains.filter(
     (d) => d.name === domain

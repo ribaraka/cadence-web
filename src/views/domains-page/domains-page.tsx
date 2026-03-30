@@ -2,7 +2,6 @@ import React, { Suspense } from 'react';
 
 import AsyncPropsLoader from '@/components/async-props-loader/async-props-loader';
 import SectionLoadingIndicator from '@/components/section-loading-indicator/section-loading-indicator';
-import { resolveAuthContext } from '@/utils/auth/auth-context';
 
 import DomainsPageContextProvider from './domains-page-context-provider/domains-page-context-provider';
 import DomainsPageErrorBanner from './domains-page-error-banner/domains-page-error-banner';
@@ -13,9 +12,6 @@ import DomainsTable from './domains-table/domains-table';
 import getCachedAllDomains from './helpers/get-cached-all-domains';
 
 export default async function DomainsPage() {
-  const authContext = await resolveAuthContext();
-  const loadDomains = () => getCachedAllDomains(authContext);
-
   return (
     <DomainsPageContextProvider>
       <DomainsPageTitle
@@ -24,7 +20,7 @@ export default async function DomainsPage() {
             <AsyncPropsLoader
               component={DomainsPageTitleBadge}
               getAsyncProps={async () => {
-                const res = await loadDomains();
+                const res = await getCachedAllDomains();
                 return { content: res.domains.length };
               }}
             />
@@ -36,7 +32,7 @@ export default async function DomainsPage() {
         <AsyncPropsLoader
           component={DomainsPageErrorBanner}
           getAsyncProps={async () => {
-            const res = await loadDomains();
+            const res = await getCachedAllDomains();
             return { failedClusters: res.failedClusters };
           }}
         />
@@ -45,7 +41,7 @@ export default async function DomainsPage() {
         <AsyncPropsLoader
           component={DomainsTable}
           getAsyncProps={async () => {
-            const res = await loadDomains();
+            const res = await getCachedAllDomains();
             return { domains: res.domains };
           }}
         />
