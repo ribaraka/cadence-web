@@ -1,5 +1,8 @@
 import { type Instrumentation } from '@opentelemetry/instrumentation';
 
+import getTransformedConfigs from './utils/config/get-transformed-configs';
+import { setLoadedGlobalConfigs } from './utils/config/global-configs-ref';
+
 export async function register() {
   let instrumentations: (Instrumentation | Instrumentation[])[] = [];
   // register instrumentations before any other code is executed
@@ -25,12 +28,6 @@ export async function register() {
       });
     }
     try {
-      const { default: getTransformedConfigs } = await import(
-        './utils/config/get-transformed-configs'
-      );
-      const { setLoadedGlobalConfigs } = await import(
-        './utils/config/global-configs-ref'
-      );
       const configs = await getTransformedConfigs();
       setLoadedGlobalConfigs(configs);
     } catch (e) {

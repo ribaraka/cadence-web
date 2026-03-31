@@ -1,20 +1,13 @@
-import {
-  getGrpcMetadataFromAuth,
-  resolveAuthContext,
-} from '@/utils/auth/auth-context';
-import { getClusterMethods } from '@/utils/grpc/grpc-client';
+import { resolveAuthContext } from '@/utils/auth/auth-context';
 import logger from '@/utils/logger';
+import request from '@/utils/request';
 import { getDomainObj } from '@/views/domains-page/__fixtures__/domains';
 
 import domainAccess from '../domain-access';
 
 jest.mock('@/utils/auth/auth-context', () => ({
   ...jest.requireActual('@/utils/auth/auth-context'),
-  getGrpcMetadataFromAuth: jest.fn(),
   resolveAuthContext: jest.fn(),
-}));
-jest.mock('@/utils/grpc/grpc-client', () => ({
-  getClusterMethods: jest.fn(),
 }));
 jest.mock('@/utils/logger', () => ({
   __esModule: true,
@@ -22,11 +15,11 @@ jest.mock('@/utils/logger', () => ({
     error: jest.fn(),
   },
 }));
+jest.mock('@/utils/request', () => jest.fn());
 
 const mockResolveAuthContext = jest.mocked(resolveAuthContext);
-const mockGetGrpcMetadataFromAuth = jest.mocked(getGrpcMetadataFromAuth);
-const mockGetClusterMethods = jest.mocked(getClusterMethods);
 const mockLoggerError = jest.mocked(logger.error);
+const mockRequest = jest.mocked(request);
 
 describe(domainAccess.name, () => {
   beforeEach(() => {
@@ -50,7 +43,7 @@ describe(domainAccess.name, () => {
       canRead: true,
       canWrite: true,
     });
-    expect(mockGetClusterMethods).not.toHaveBeenCalled();
+    expect(mockRequest).not.toHaveBeenCalled();
   });
 
   it('returns full access for admin users', async () => {
@@ -70,7 +63,7 @@ describe(domainAccess.name, () => {
       canRead: true,
       canWrite: true,
     });
-    expect(mockGetClusterMethods).not.toHaveBeenCalled();
+    expect(mockRequest).not.toHaveBeenCalled();
   });
 
   it('returns no access for unauthenticated users', async () => {
@@ -90,7 +83,7 @@ describe(domainAccess.name, () => {
       canRead: false,
       canWrite: false,
     });
-    expect(mockGetClusterMethods).not.toHaveBeenCalled();
+    expect(mockRequest).not.toHaveBeenCalled();
   });
 
   it('derives access from the domain resolver for authenticated users', async () => {
@@ -100,20 +93,17 @@ describe(domainAccess.name, () => {
       isAdmin: false,
       groups: ['reader'],
     });
-    mockGetGrpcMetadataFromAuth.mockReturnValue({
-      'cadence-authorization': 'jwt-token',
-    });
-    mockGetClusterMethods.mockResolvedValue({
-      describeDomain: jest.fn().mockResolvedValue({
-        domain: getDomainObj({
+    mockRequest.mockResolvedValue({
+      json: jest.fn().mockResolvedValue(
+        getDomainObj({
           id: 'test-domain-id',
           name: 'test-domain',
           data: {
             READ_GROUPS: 'reader',
             WRITE_GROUPS: 'writer',
           },
-        }),
-      }),
+        })
+      ),
     } as any);
 
     const result = await domainAccess({
@@ -125,9 +115,9 @@ describe(domainAccess.name, () => {
       canRead: true,
       canWrite: false,
     });
-    expect(mockGetClusterMethods).toHaveBeenCalledWith('test-cluster', {
-      'cadence-authorization': 'jwt-token',
-    });
+    expect(mockRequest).toHaveBeenCalledWith(
+      '/api/domains/test-domain/test-cluster'
+    );
   });
 
   it('rethrows when the domain lookup fails', async () => {
@@ -137,12 +127,7 @@ describe(domainAccess.name, () => {
       isAdmin: false,
       groups: ['writer'],
     });
-    mockGetGrpcMetadataFromAuth.mockReturnValue({
-      'cadence-authorization': 'jwt-token',
-    });
-    mockGetClusterMethods.mockResolvedValue({
-      describeDomain: jest.fn().mockRejectedValue(new Error('boom')),
-    } as any);
+    mockRequest.mockRejectedValue(new Error('boom'));
 
     await expect(
       domainAccess({

@@ -1,11 +1,9 @@
-import {
-  getGrpcMetadataFromAuth,
-  resolveAuthContext,
-} from '@/utils/auth/auth-context';
+import { type DescribeDomainResponse } from '@/route-handlers/describe-domain/describe-domain.types';
+import { resolveAuthContext } from '@/utils/auth/auth-context';
 import { getDomainAccessForUser } from '@/utils/auth/auth-shared';
 import { FULL_ACCESS, NO_ACCESS } from '@/utils/auth/auth-shared.constants';
-import { getClusterMethods } from '@/utils/grpc/grpc-client';
 import logger from '@/utils/logger';
+import request from '@/utils/request';
 
 import {
   type DomainAccessResolverParams,
@@ -27,13 +25,9 @@ export default async function domainAccess({
   }
 
   try {
-    const clusterMethods = await getClusterMethods(
-      cluster,
-      getGrpcMetadataFromAuth(authContext)
-    );
-    const { domain: domainDetails } = await clusterMethods.describeDomain({
-      name: domain,
-    });
+    const domainDetails: DescribeDomainResponse = await request(
+      `/api/domains/${encodeURIComponent(domain)}/${encodeURIComponent(cluster)}`
+    ).then((res) => res.json());
 
     if (!domainDetails) {
       return NO_ACCESS;
