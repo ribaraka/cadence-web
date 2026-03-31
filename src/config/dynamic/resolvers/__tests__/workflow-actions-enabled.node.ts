@@ -1,10 +1,10 @@
 import { FULL_ACCESS, NO_ACCESS } from '@/utils/auth/auth-shared.constants';
 
+import domainAccess from '../domain-access';
 import workflowActionsEnabled from '../workflow-actions-enabled';
 
-jest.mock('@/utils/config/get-config-value');
-const mockGetConfigValue = jest.requireMock('@/utils/config/get-config-value')
-  .default as jest.Mock;
+jest.mock('../domain-access', () => jest.fn());
+const mockDomainAccess = jest.mocked(domainAccess);
 
 describe(workflowActionsEnabled.name, () => {
   beforeEach(() => {
@@ -12,14 +12,14 @@ describe(workflowActionsEnabled.name, () => {
   });
 
   it('returns enabled actions when user has write access', async () => {
-    mockGetConfigValue.mockResolvedValue(FULL_ACCESS);
+    mockDomainAccess.mockResolvedValue(FULL_ACCESS);
 
     const result = await workflowActionsEnabled({
       cluster: 'test-cluster',
       domain: 'test-domain',
     });
 
-    expect(mockGetConfigValue).toHaveBeenCalledWith('DOMAIN_ACCESS', {
+    expect(mockDomainAccess).toHaveBeenCalledWith({
       cluster: 'test-cluster',
       domain: 'test-domain',
     });
@@ -34,7 +34,7 @@ describe(workflowActionsEnabled.name, () => {
   });
 
   it('returns unauthorized actions when write access is denied', async () => {
-    mockGetConfigValue.mockResolvedValue(NO_ACCESS);
+    mockDomainAccess.mockResolvedValue(NO_ACCESS);
 
     const result = await workflowActionsEnabled({
       cluster: 'test-cluster',
@@ -52,7 +52,7 @@ describe(workflowActionsEnabled.name, () => {
   });
 
   it('returns default-disabled actions when domain access resolution fails', async () => {
-    mockGetConfigValue.mockRejectedValue(new Error('boom'));
+    mockDomainAccess.mockRejectedValue(new Error('boom'));
 
     const result = await workflowActionsEnabled({
       cluster: 'test-cluster',

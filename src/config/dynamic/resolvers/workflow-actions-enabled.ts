@@ -1,5 +1,4 @@
-import getConfigValue from '@/utils/config/get-config-value';
-
+import domainAccess from './domain-access';
 import {
   AUTHORIZED_WORKFLOW_ACTIONS_CONFIG,
   DEFAULT_DISABLED_WORKFLOW_ACTIONS_CONFIG,
@@ -19,7 +18,7 @@ export default async function workflowActionsEnabled(
   params: WorkflowActionsEnabledResolverParams
 ): Promise<WorkflowActionsEnabledConfig> {
   try {
-    const access = await getConfigValue('DOMAIN_ACCESS', params);
+    const access = await domainAccess(params);
     if (!access.canWrite) {
       return UNAUTHORIZED_WORKFLOW_ACTIONS_CONFIG;
     }
